@@ -56,10 +56,5 @@ function App() {
     </AuthWrapper>
   );
 }
-        </div>
-      </main>
-    </div>
-  );
-}
 
 export default App;
