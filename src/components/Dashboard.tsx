@@ -1,17 +1,41 @@
 import React from 'react';
-import { mockFields, mockFinances, mockInventory, mockEquipment, mockHarvest, mockTrees, mockPestTreatments } from '../data/mockData';
+import { useFields } from '../hooks/useFields';
+import { useFinances } from '../hooks/useFinances';
+import { useInventory } from '../hooks/useInventory';
+import { useEquipment } from '../hooks/useEquipment';
+import { useHarvest } from '../hooks/useHarvest';
+import { useTrees } from '../hooks/useTrees';
+import { usePestTreatments } from '../hooks/usePestTreatments';
 import { TrendingUp, TrendingDown, MapPin, Package, Wrench, PoundSterling } from 'lucide-react';
 
 export function Dashboard() {
-  const totalFields = mockFields.length;
-  const totalTrees = mockTrees.reduce((sum, tree) => sum + tree.treeCount, 0);
-  const harvestRevenue = mockHarvest.reduce((sum, h) => sum + h.totalRevenue, 0);
-  const pendingTreatments = mockPestTreatments.filter(t => !t.completed).length;
-  const totalIncome = mockFinances.filter(f => f.type === 'income').reduce((sum, f) => sum + f.amount, 0);
-  const totalExpenses = mockFinances.filter(f => f.type === 'expense').reduce((sum, f) => sum + f.amount, 0);
+  const { fields, loading: fieldsLoading } = useFields();
+  const { finances, loading: financesLoading } = useFinances();
+  const { inventory, loading: inventoryLoading } = useInventory();
+  const { equipment, loading: equipmentLoading } = useEquipment();
+  const { harvest, loading: harvestLoading } = useHarvest();
+  const { trees, loading: treesLoading } = useTrees();
+  const { pestTreatments, loading: pestLoading } = usePestTreatments();
+
+  const loading = fieldsLoading || financesLoading || inventoryLoading || equipmentLoading || harvestLoading || treesLoading || pestLoading;
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+      </div>
+    );
+  }
+
+  const totalFields = fields.length;
+  const totalTrees = trees.reduce((sum, tree) => sum + (tree.tree_count || 0), 0);
+  const harvestRevenue = harvest.reduce((sum, h) => sum + (h.total_revenue || 0), 0);
+  const pendingTreatments = pestTreatments.filter(t => !t.completed).length;
+  const totalIncome = finances.filter(f => f.entry_type === 'income').reduce((sum, f) => sum + (f.amount || 0), 0);
+  const totalExpenses = finances.filter(f => f.entry_type === 'expense').reduce((sum, f) => sum + (f.amount || 0), 0);
   const netProfit = totalIncome - totalExpenses;
-  const lowStockItems = mockInventory.filter(i => i.quantity < 100).length;
-  const equipmentIssues = mockEquipment.filter(e => e.condition === 'poor' || e.condition === 'fair').length;
+  const lowStockItems = inventory.filter(i => (i.quantity || 0) < 100).length;
+  const equipmentIssues = equipment.filter(e => e.condition === 'poor' || e.condition === 'fair').length;
 
   const summaryCards = [
     {
@@ -24,7 +48,7 @@ export function Dashboard() {
     {
       title: 'Harvest Revenue',
       value: `₹${harvestRevenue.toLocaleString()}`,
-      subtitle: `${mockHarvest.reduce((sum, h) => sum + h.binCount, 0)} bins harvested`,
+      subtitle: `${harvest.reduce((sum, h) => sum + (h.bin_count || 0), 0)} bins harvested`,
       icon: netProfit >= 0 ? TrendingUp : TrendingDown,
       color: netProfit >= 0 ? 'green' : 'red'
     },
@@ -37,7 +61,7 @@ export function Dashboard() {
     },
     {
       title: 'Equipment Status',
-      value: `${mockEquipment.length - equipmentIssues}/${mockEquipment.length}`,
+      value: `${equipment.length - equipmentIssues}/${equipment.length}`,
       subtitle: 'Equipment in good condition',
       icon: Wrench,
       color: equipmentIssues === 0 ? 'green' : 'amber'
@@ -87,28 +111,28 @@ export function Dashboard() {
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Orchard Block Overview</h3>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {mockFields.map(field => (
+          {fields.slice(0, 6).map(field => (
             <div key={field.id} className="border border-gray-200 rounded-lg p-4">
               <div className="flex items-center justify-between mb-2">
                 <h4 className="font-medium text-gray-900">{field.name}</h4>
                 <span className={`px-2 py-1 text-xs rounded-full ${
-                  field.weedState === 'low' ? 'bg-green-100 text-green-800' :
-                  field.weedState === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                  field.weed_state === 'low' ? 'bg-green-100 text-green-800' :
+                  field.weed_state === 'medium' ? 'bg-yellow-100 text-yellow-800' :
                   'bg-red-100 text-red-800'
                 }`}>
-                  {field.weedState} weeds
+                  {field.weed_state} weeds
                 </span>
               </div>
               <p className="text-sm text-gray-600 mb-2">{field.crop} • {field.area} ha</p>
               <div className="flex items-center space-x-2">
                 <div className={`w-3 h-3 rounded-full ${
-                  field.growthStage === 'seeding' ? 'bg-yellow-400' :
-                  field.growthStage === 'vegetative' ? 'bg-green-400' :
-                  field.growthStage === 'flowering' ? 'bg-purple-400' :
-                  field.growthStage === 'fruiting' ? 'bg-orange-400' :
+                  field.growth_stage === 'seeding' ? 'bg-yellow-400' :
+                  field.growth_stage === 'vegetative' ? 'bg-green-400' :
+                  field.growth_stage === 'flowering' ? 'bg-purple-400' :
+                  field.growth_stage === 'fruiting' ? 'bg-orange-400' :
                   'bg-blue-400'
                 }`} />
-                <span className="text-sm text-gray-700 capitalize">{field.growthStage}</span>
+                <span className="text-sm text-gray-700 capitalize">{field.growth_stage}</span>
               </div>
             </div>
           ))}
@@ -119,19 +143,19 @@ export function Dashboard() {
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-gray-900">Recent Harvest Activity</h3>
-          <span className="text-sm text-gray-500">{mockHarvest.length} records</span>
+          <span className="text-sm text-gray-500">{harvest.length} records</span>
         </div>
         <div className="space-y-3">
-          {mockHarvest.slice(0, 3).map(harvest => (
-            <div key={harvest.id} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0">
+          {harvest.slice(0, 3).map(harvestRecord => (
+            <div key={harvestRecord.id} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0">
               <div className="flex-1">
-                <p className="font-medium text-gray-900 text-sm">{harvest.variety} - {harvest.binCount} bins</p>
+                <p className="font-medium text-gray-900 text-sm">{harvestRecord.variety} - {harvestRecord.bin_count} bins</p>
                 <p className="text-xs text-gray-500">
-                  {harvest.qualityGrade} grade • {new Date(harvest.harvestDate).toLocaleDateString()}
+                  {harvestRecord.quality_grade} grade • {new Date(harvestRecord.harvest_date).toLocaleDateString()}
                 </p>
               </div>
               <span className="font-medium text-green-600">
-                ₹{harvest.totalRevenue.toLocaleString()}
+                ₹{harvestRecord.total_revenue?.toLocaleString()}
               </span>
             </div>
           ))}
@@ -144,16 +168,16 @@ export function Dashboard() {
           <PoundSterling size={20} className="text-gray-400" />
         </div>
         <div className="space-y-3">
-          {mockFinances.slice(0, 5).map(entry => (
+          {finances.slice(0, 5).map(entry => (
             <div key={entry.id} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0">
               <div className="flex-1">
                 <p className="font-medium text-gray-900 text-sm">{entry.description}</p>
-                <p className="text-xs text-gray-500">{new Date(entry.date).toLocaleDateString()}</p>
+                <p className="text-xs text-gray-500">{new Date(entry.entry_date).toLocaleDateString()}</p>
               </div>
               <span className={`font-medium ${
-                entry.type === 'income' ? 'text-green-600' : 'text-red-600'
+                entry.entry_type === 'income' ? 'text-green-600' : 'text-red-600'
               }`}>
-                {entry.type === 'income' ? '+' : '-'}₹{entry.amount.toLocaleString()}
+                {entry.entry_type === 'income' ? '+' : '-'}₹{entry.amount?.toLocaleString()}
               </span>
             </div>
           ))}

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ViewType } from './types';
+import { AuthWrapper } from './components/AuthWrapper';
 import { Navigation } from './components/Navigation';
 import { Dashboard } from './components/Dashboard';
 import { FieldManagement } from './components/FieldManagement';
@@ -37,17 +38,24 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      <Navigation 
-        currentView={currentView} 
-        onViewChange={setCurrentView}
-        isMobileMenuOpen={isMobileMenuOpen}
-        onToggleMobileMenu={handleToggleMobileMenu}
-      />
-      
-      <main className="flex-1 lg:ml-64 p-4 lg:p-8">
-        <div className="max-w-7xl mx-auto">
-          {renderCurrentView()}
+    <AuthWrapper>
+      <div className="min-h-screen bg-gray-50 flex">
+        <Navigation 
+          currentView={currentView} 
+          onViewChange={setCurrentView}
+          isMobileMenuOpen={isMobileMenuOpen}
+          onToggleMobileMenu={handleToggleMobileMenu}
+        />
+        
+        <main className="flex-1 lg:ml-64 p-4 lg:p-8">
+          <div className="max-w-7xl mx-auto">
+            {renderCurrentView()}
+          </div>
+        </main>
+      </div>
+    </AuthWrapper>
+  );
+}
         </div>
       </main>
     </div>

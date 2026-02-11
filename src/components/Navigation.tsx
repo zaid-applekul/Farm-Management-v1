@@ -1,5 +1,6 @@
 import React from 'react';
 import { ViewType } from '../types';
+import { useAuth } from '../hooks/useAuth';
 import { 
   BarChart3, 
   Sprout, 
@@ -12,7 +13,8 @@ import {
   X,
   TreePine,
   Apple,
-  Bug
+  Bug,
+  LogOut
 } from 'lucide-react';
 
 interface NavigationProps {
@@ -23,6 +25,8 @@ interface NavigationProps {
 }
 
 export function Navigation({ currentView, onViewChange, isMobileMenuOpen, onToggleMobileMenu }: NavigationProps) {
+  const { signOut } = useAuth();
+
   const navItems = [
     { id: 'dashboard' as ViewType, label: 'Dashboard', icon: BarChart3 },
     { id: 'fields' as ViewType, label: 'Fields', icon: Sprout },
@@ -35,6 +39,10 @@ export function Navigation({ currentView, onViewChange, isMobileMenuOpen, onTogg
     { id: 'equipment' as ViewType, label: 'Equipment', icon: Wrench },
     { id: 'users' as ViewType, label: 'Users', icon: Users },
   ];
+
+  const handleSignOut = async () => {
+    await signOut();
+  };
 
   return (
     <>
@@ -81,6 +89,16 @@ export function Navigation({ currentView, onViewChange, isMobileMenuOpen, onTogg
                 </button>
               );
             })}
+          </div>
+          
+          <div className="mt-8 pt-4 border-t border-gray-200">
+            <button
+              onClick={handleSignOut}
+              className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors text-gray-700 hover:bg-gray-50"
+            >
+              <LogOut size={20} />
+              <span className="font-medium">Sign Out</span>
+            </button>
           </div>
         </div>
       </nav>
