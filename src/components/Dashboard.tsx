@@ -6,7 +6,7 @@ import { useEquipment } from '../hooks/useEquipment';
 import { useHarvest } from '../hooks/useHarvest';
 import { useTrees } from '../hooks/useTrees';
 import { usePestTreatments } from '../hooks/usePestTreatments';
-import { TrendingUp, TrendingDown, MapPin, Package, Wrench, PoundSterling } from 'lucide-react';
+import { TrendingUp, TrendingDown, MapPin, Package, Wrench, PoundSterling, Apple } from 'lucide-react';
 
 export function Dashboard() {
   const { fields, loading: fieldsLoading } = useFields();
@@ -42,7 +42,7 @@ export function Dashboard() {
       title: 'Apple Trees',
       value: totalTrees.toLocaleString(),
       subtitle: `${totalFields} orchard blocks`,
-      icon: MapPin,
+      icon: Apple,
       color: 'green'
     },
     {
@@ -120,7 +120,7 @@ export function Dashboard() {
                   field.weed_state === 'medium' ? 'bg-yellow-100 text-yellow-800' :
                   'bg-red-100 text-red-800'
                 }`}>
-                  {field.weed_state} weeds
+                  {field.weed_state || 'low'} weeds
                 </span>
               </div>
               <p className="text-sm text-gray-600 mb-2">{field.crop} • {field.area} ha</p>
@@ -132,7 +132,7 @@ export function Dashboard() {
                   field.growth_stage === 'fruiting' ? 'bg-orange-400' :
                   'bg-blue-400'
                 }`} />
-                <span className="text-sm text-gray-700 capitalize">{field.growth_stage}</span>
+                <span className="text-sm text-gray-700 capitalize">{field.growth_stage || 'vegetative'}</span>
               </div>
             </div>
           ))}

@@ -1,19 +1,42 @@
 import React, { useState } from 'react';
-import { mockPestTreatments, mockTrees, mockInventory } from '../data/mockData';
+import { usePestTreatments } from '../hooks/usePestTreatments';
+import { useTrees } from '../hooks/useTrees';
+import { useInventory } from '../hooks/useInventory';
 import { Bug, Plus, AlertTriangle, CheckCircle, Clock, Droplets } from 'lucide-react';
 
 export function PestManagement() {
+  const { pestTreatments, loading: pestLoading, error: pestError } = usePestTreatments();
+  const { trees, loading: treesLoading } = useTrees();
+  const { inventory, loading: inventoryLoading } = useInventory();
   const [selectedPest, setSelectedPest] = useState<string>('all');
   const [showAddForm, setShowAddForm] = useState(false);
 
+  const loading = pestLoading || treesLoading || inventoryLoading;
+
   const filteredTreatments = selectedPest === 'all' 
-    ? mockPestTreatments 
-    : mockPestTreatments.filter(t => t.pestType === selectedPest);
+    ? pestTreatments 
+    : pestTreatments.filter(t => t.pest_type === selectedPest);
 
   const completedTreatments = filteredTreatments.filter(t => t.completed).length;
   const pendingTreatments = filteredTreatments.filter(t => !t.completed).length;
   const totalCost = filteredTreatments.reduce((sum, t) => sum + t.cost, 0);
   const effectiveTreatments = filteredTreatments.filter(t => t.effectiveness === 'excellent' || t.effectiveness === 'good').length;
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+      </div>
+    );
+  }
+
+  if (pestError) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+        <p className="text-red-800">Error loading pest treatments: {pestError}</p>
+      </div>
+    );
+  }
 
   const pestTypes = [
     { id: 'woolly_aphid', name: 'Woolly Apple Aphid', color: 'bg-red-100 text-red-800' },
@@ -139,8 +162,8 @@ export function PestManagement() {
       {/* Treatment Records */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {filteredTreatments.map(treatment => {
-          const tree = mockTrees.find(t => t.id === treatment.treeId);
-          const pestInfo = pestTypes.find(p => p.id === treatment.pestType);
+          const tree = trees.find(t => t.id === treatment.tree_id);
+          const pestInfo = pestTypes.find(p => p.id === treatment.pest_type);
           
           return (
             <div key={treatment.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
@@ -149,7 +172,7 @@ export function PestManagement() {
                   <Bug size={20} className="text-red-600" />
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900">{pestInfo?.name}</h3>
-                    <p className="text-sm text-gray-600">{tree?.variety} - Row {tree?.row}</p>
+                    <p className="text-sm text-gray-600">{tree?.variety} - Row {tree?.row_number}</p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
@@ -158,8 +181,8 @@ export function PestManagement() {
                   ) : (
                     <Clock className="text-amber-600" size={20} />
                   )}
-                  <span className={`px-2 py-1 text-xs rounded-full font-medium ${getPestColor(treatment.pestType)}`}>
-                    Step {treatment.treatmentStep}
+                  <span className={`px-2 py-1 text-xs rounded-full font-medium ${getPestColor(treatment.pest_type)}`}>
+                    Step {treatment.treatment_step}
                   </span>
                 </div>
               </div>
@@ -177,12 +200,12 @@ export function PestManagement() {
                 
                 <div className="flex justify-between">
                   <span className="text-gray-600">Applied:</span>
-                  <span className="font-medium">{new Date(treatment.applicationDate).toLocaleDateString()}</span>
+                  <span className="font-medium">{new Date(treatment.application_date).toLocaleDateString()}</span>
                 </div>
 
                 <div className="flex justify-between">
                   <span className="text-gray-600">Cost:</span>
-                  <span className="font-medium text-red-600">₹{treatment.cost}</span>
+                  <span className="font-medium text-red-600">₹{treatment.cost || 0}</span>
                 </div>
 
                 {treatment.effectiveness && (
@@ -195,12 +218,12 @@ export function PestManagement() {
                 )}
               </div>
 
-              {treatment.nextTreatmentDue && (
+              {treatment.next_treatment_due && (
                 <div className="mt-4 p-3 bg-amber-50 rounded-lg">
                   <div className="flex items-center space-x-2">
                     <AlertTriangle size={16} className="text-amber-600" />
                     <span className="text-sm text-amber-800">
-                      Next treatment due: {new Date(treatment.nextTreatmentDue).toLocaleDateString()}
+                      Next treatment due: {new Date(treatment.next_treatment_due).toLocaleDateString()}
                     </span>
                   </div>
                 </div>
@@ -257,22 +280,22 @@ export function PestManagement() {
           <h3 className="text-lg font-semibold text-gray-900">Chemical Inventory Status</h3>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {mockInventory.filter(item => item.type === 'pesticide').map(chemical => (
+          {inventory.filter(item => item.item_type === 'pesticide').map(chemical => (
             <div key={chemical.id} className="border border-gray-200 rounded-lg p-4">
               <div className="flex items-center justify-between mb-2">
                 <h4 className="font-medium text-gray-900">{chemical.name}</h4>
                 <span className={`px-2 py-1 text-xs rounded-full font-medium ${
-                  chemical.quantity < 20 ? 'bg-red-100 text-red-800' : 
-                  chemical.quantity < 50 ? 'bg-yellow-100 text-yellow-800' : 
+                  (chemical.quantity || 0) < 20 ? 'bg-red-100 text-red-800' : 
+                  (chemical.quantity || 0) < 50 ? 'bg-yellow-100 text-yellow-800' : 
                   'bg-green-100 text-green-800'
                 }`}>
                   {chemical.quantity} {chemical.unit}
                 </span>
               </div>
-              <p className="text-sm text-gray-600 mb-1">₹{chemical.pricePerUnit}/{chemical.unit}</p>
-              {chemical.expiryDate && (
+              <p className="text-sm text-gray-600 mb-1">₹{chemical.price_per_unit}/{chemical.unit}</p>
+              {chemical.expiry_date && (
                 <p className="text-xs text-gray-500">
-                  Expires: {new Date(chemical.expiryDate).toLocaleDateString()}
+                  Expires: {new Date(chemical.expiry_date).toLocaleDateString()}
                 </p>
               )}
             </div>
@@ -300,9 +323,9 @@ export function PestManagement() {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Tree Block</label>
                     <select className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-green-500 focus:border-green-500">
-                      {mockTrees.map(tree => (
+                      {trees.map(tree => (
                         <option key={tree.id} value={tree.id}>
-                          {tree.variety} - Row {tree.row}
+                          {tree.variety} - Row {tree.row_number}
                         </option>
                       ))}
                     </select>
@@ -331,7 +354,7 @@ export function PestManagement() {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Chemical Used</label>
                     <select className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-green-500 focus:border-green-500">
-                      {mockInventory.filter(item => item.type === 'pesticide').map(chemical => (
+                      {inventory.filter(item => item.item_type === 'pesticide').map(chemical => (
                         <option key={chemical.id} value={chemical.name}>{chemical.name}</option>
                       ))}
                     </select>

@@ -1,27 +1,44 @@
 import React, { useState } from 'react';
-import { mockInventory } from '../data/mockData';
+import { useInventory } from '../hooks/useInventory';
 import { Package, AlertTriangle, Plus, Search } from 'lucide-react';
 
 export function InventoryManagement() {
+  const { inventory, loading, error } = useInventory();
   const [selectedType, setSelectedType] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
 
-  const filteredInventory = mockInventory.filter(item => {
-    const matchesType = selectedType === 'all' || item.type === selectedType;
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+        <p className="text-red-800">Error loading inventory: {error}</p>
+      </div>
+    );
+  }
+
+  const filteredInventory = inventory.filter(item => {
+    const matchesType = selectedType === 'all' || item.item_type === selectedType;
     const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesType && matchesSearch;
   });
 
-  const lowStockItems = mockInventory.filter(item => item.quantity < 100);
-  const expiringItems = mockInventory.filter(item => {
-    if (!item.expiryDate) return false;
-    const expiryDate = new Date(item.expiryDate);
+  const lowStockItems = inventory.filter(item => (item.quantity || 0) < 100);
+  const expiringItems = inventory.filter(item => {
+    if (!item.expiry_date) return false;
+    const expiryDate = new Date(item.expiry_date);
     const threeMonthsFromNow = new Date();
     threeMonthsFromNow.setMonth(threeMonthsFromNow.getMonth() + 3);
     return expiryDate <= threeMonthsFromNow;
   });
 
-  const totalValue = filteredInventory.reduce((sum, item) => sum + (item.quantity * item.pricePerUnit), 0);
+  const totalValue = filteredInventory.reduce((sum, item) => sum + ((item.quantity || 0) * (item.price_per_unit || 0)), 0);
 
   return (
     <div className="space-y-6">
@@ -48,7 +65,7 @@ export function InventoryManagement() {
         <div className="bg-green-50 border-2 border-green-200 rounded-lg p-4">
           <div>
             <p className="text-green-700 font-medium">Total Value</p>
-            <p className="text-2xl font-bold text-green-800">£{totalValue.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-green-800">₹{totalValue.toLocaleString()}</p>
           </div>
         </div>
 
@@ -159,34 +176,34 @@ export function InventoryManagement() {
                   <tr key={item.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4">
                       <div className="font-medium text-gray-900">{item.name}</div>
-                      {item.expiryDate && (
-                        <div className="text-sm text-gray-500">Expires: {new Date(item.expiryDate).toLocaleDateString()}</div>
+                      {item.expiry_date && (
+                        <div className="text-sm text-gray-500">Expires: {new Date(item.expiry_date).toLocaleDateString()}</div>
                       )}
                     </td>
                     <td className="px-6 py-4">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        item.type === 'fertilizer' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                        item.item_type === 'fertilizer' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                       }`}>
-                        {item.type}
+                        {item.item_type}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-gray-900">{item.quantity} {item.unit}</td>
-                    <td className="px-6 py-4 text-gray-900">£{item.pricePerUnit.toFixed(2)}</td>
-                    <td className="px-6 py-4 font-medium text-gray-900">£{(item.quantity * item.pricePerUnit).toFixed(2)}</td>
+                    <td className="px-6 py-4 text-gray-900">₹{item.price_per_unit?.toFixed(2)}</td>
+                    <td className="px-6 py-4 font-medium text-gray-900">₹{((item.quantity || 0) * (item.price_per_unit || 0)).toFixed(2)}</td>
                     <td className="px-6 py-4 text-gray-900">{item.supplier}</td>
                     <td className="px-6 py-4">
                       <div className="flex flex-col space-y-1">
-                        {isLowStock && (
+                        {(item.quantity || 0) < 100 && (
                           <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-800">
                             Low Stock
                           </span>
                         )}
-                        {isExpiring && (
+                        {item.expiry_date && new Date(item.expiry_date) <= new Date(Date.now() + 90 * 24 * 60 * 60 * 1000) && (
                           <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
                             Expiring Soon
                           </span>
                         )}
-                        {!isLowStock && !isExpiring && (
+                        {(item.quantity || 0) >= 100 && (!item.expiry_date || new Date(item.expiry_date) > new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)) && (
                           <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
                             Good
                           </span>

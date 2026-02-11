@@ -1,19 +1,35 @@
 import React, { useState } from 'react';
-import { mockFinances } from '../data/mockData';
-import { FinancialEntry } from '../types';
+import { useFinances } from '../hooks/useFinances';
 import { PoundSterling, TrendingUp, TrendingDown, Plus, Filter } from 'lucide-react';
 
 export function FinancialLedger() {
+  const { finances, loading, error } = useFinances();
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [showAddForm, setShowAddForm] = useState(false);
 
-  const totalIncome = mockFinances.filter(f => f.type === 'income').reduce((sum, f) => sum + f.amount, 0);
-  const totalExpenses = mockFinances.filter(f => f.type === 'expense').reduce((sum, f) => sum + f.amount, 0);
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+        <p className="text-red-800">Error loading financial data: {error}</p>
+      </div>
+    );
+  }
+
+  const totalIncome = finances.filter(f => f.entry_type === 'income').reduce((sum, f) => sum + (f.amount || 0), 0);
+  const totalExpenses = finances.filter(f => f.entry_type === 'expense').reduce((sum, f) => sum + (f.amount || 0), 0);
   const netProfit = totalIncome - totalExpenses;
 
   const filteredFinances = selectedCategory === 'all' 
-    ? mockFinances 
-    : mockFinances.filter(f => f.category === selectedCategory);
+    ? finances 
+    : finances.filter(f => f.category === selectedCategory);
 
   const categories = [
     'all', 'sales', 'purchases', 'equipment', 'fertilizer', 'pesticide', 'labor', 'other'
@@ -116,14 +132,15 @@ export function FinancialLedger() {
                     <h4 className="font-medium text-gray-900">{entry.description}</h4>
                   </div>
                   <p className="text-sm text-gray-500 mt-1">{new Date(entry.date).toLocaleDateString()}</p>
+                  <p className="text-sm text-gray-500 mt-1">{new Date(entry.entry_date).toLocaleDateString()}</p>
                 </div>
                 <div className="text-right">
                   <span className={`text-lg font-semibold ${
-                    entry.type === 'income' ? 'text-green-600' : 'text-red-600'
+                    entry.entry_type === 'income' ? 'text-green-600' : 'text-red-600'
                   }`}>
-                    {entry.type === 'income' ? '+' : '-'}£{entry.amount.toLocaleString()}
+                    {entry.entry_type === 'income' ? '+' : '-'}₹{entry.amount?.toLocaleString()}
                   </span>
-                  <p className="text-xs text-gray-500">{entry.type}</p>
+                  <p className="text-xs text-gray-500">{entry.entry_type}</p>
                 </div>
               </div>
             ))}
@@ -156,8 +173,8 @@ export function FinancialLedger() {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
                     <select className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-green-500 focus:border-green-500">
-                      <option>Income</option>
-                      <option>Expense</option>
+                      <option value="income">Income</option>
+                      <option value="expense">Expense</option>
                     </select>
                   </div>
                   
@@ -177,7 +194,7 @@ export function FinancialLedger() {
                 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Amount (£)</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Amount (₹)</label>
                     <input type="number" className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-green-500 focus:border-green-500" />
                   </div>
                   

@@ -1,19 +1,41 @@
 import React, { useState } from 'react';
-import { mockHarvest, mockTrees, appleVarieties } from '../data/mockData';
+import { useHarvest } from '../hooks/useHarvest';
+import { useTrees } from '../hooks/useTrees';
+import { appleVarieties } from '../data/mockData';
 import { Apple, Plus, TrendingUp, Package, Star, Thermometer, Calendar } from 'lucide-react';
 
 export function HarvestManagement() {
+  const { harvest, loading: harvestLoading, error: harvestError } = useHarvest();
+  const { trees, loading: treesLoading } = useTrees();
   const [selectedVariety, setSelectedVariety] = useState<string>('all');
   const [showAddForm, setShowAddForm] = useState(false);
 
-  const filteredHarvest = selectedVariety === 'all' 
-    ? mockHarvest 
-    : mockHarvest.filter(h => h.variety === selectedVariety);
+  const loading = harvestLoading || treesLoading;
 
-  const totalBins = filteredHarvest.reduce((sum, h) => sum + h.binCount, 0);
-  const totalRevenue = filteredHarvest.reduce((sum, h) => sum + h.totalRevenue, 0);
+  const filteredHarvest = selectedVariety === 'all' 
+    ? harvest 
+    : harvest.filter(h => h.variety === selectedVariety);
+
+  const totalBins = filteredHarvest.reduce((sum, h) => sum + (h.bin_count || 0), 0);
+  const totalRevenue = filteredHarvest.reduce((sum, h) => sum + (h.total_revenue || 0), 0);
   const avgPricePerBin = totalBins > 0 ? totalRevenue / totalBins : 0;
-  const premiumGrade = filteredHarvest.filter(h => h.qualityGrade === 'premium').length;
+  const premiumGrade = filteredHarvest.filter(h => h.quality_grade === 'premium').length;
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+      </div>
+    );
+  }
+
+  if (harvestError) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+        <p className="text-red-800">Error loading harvest data: {harvestError}</p>
+      </div>
+    );
+  }
 
   const getGradeColor = (grade: string) => {
     switch (grade) {
@@ -101,7 +123,7 @@ export function HarvestManagement() {
             >
               All Varieties
             </button>
-            {Array.from(new Set(mockHarvest.map(h => h.variety))).map(variety => (
+            {Array.from(new Set(harvest.map(h => h.variety))).map(variety => (
               <button
                 key={variety}
                 onClick={() => setSelectedVariety(variety)}
@@ -119,7 +141,7 @@ export function HarvestManagement() {
       {/* Harvest Records */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {filteredHarvest.map(harvest => {
-          const varietyInfo = getVarietyInfo(harvest.variety);
+          const tree = trees.find(t => t.id === harvestRecord.tree_id);
           return (
             <div key={harvest.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <div className="flex items-start justify-between mb-4">
@@ -130,46 +152,46 @@ export function HarvestManagement() {
                     <p className="text-sm text-gray-600">Harvested by {harvest.picker}</p>
                   </div>
                 </div>
-                <span className={`px-3 py-1 text-sm rounded-full font-medium border ${getGradeColor(harvest.qualityGrade)}`}>
-                  {harvest.qualityGrade}
+                <span className={`px-3 py-1 text-sm rounded-full font-medium border ${getGradeColor(harvestRecord.quality_grade || 'standard')}`}>
+                  {harvestRecord.quality_grade}
                 </span>
               </div>
 
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
                   <p className="text-xs uppercase text-gray-500">Bins Harvested</p>
-                  <p className="text-xl font-bold text-gray-900">{harvest.binCount}</p>
+                  <p className="text-xl font-bold text-gray-900">{harvestRecord.bin_count}</p>
                 </div>
                 <div>
                   <p className="text-xs uppercase text-gray-500">Revenue</p>
-                  <p className="text-xl font-bold text-green-600">₹{harvest.totalRevenue.toLocaleString()}</p>
+                  <p className="text-xl font-bold text-green-600">₹{harvestRecord.total_revenue?.toLocaleString()}</p>
                 </div>
                 <div>
                   <p className="text-xs uppercase text-gray-500">Price per Bin</p>
-                  <p className="text-lg font-medium text-gray-900">₹{harvest.pricePerBin}</p>
+                  <p className="text-lg font-medium text-gray-900">₹{harvestRecord.price_per_bin}</p>
                 </div>
                 <div>
                   <p className="text-xs uppercase text-gray-500">Harvest Date</p>
                   <div className="flex items-center space-x-1">
                     <Calendar size={14} className="text-gray-400" />
-                    <p className="text-sm text-gray-700">{new Date(harvest.harvestDate).toLocaleDateString()}</p>
+                    <p className="text-sm text-gray-700">{new Date(harvestRecord.harvest_date).toLocaleDateString()}</p>
                   </div>
                 </div>
               </div>
 
-              {harvest.storageLocation && (
+              {harvestRecord.storage_location && (
                 <div className="mb-4 p-3 bg-blue-50 rounded-lg">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-blue-900">Storage: {harvest.storageLocation}</p>
-                      {harvest.starchIndex && (
-                        <p className="text-xs text-blue-700">Starch Index: {harvest.starchIndex}</p>
+                      <p className="text-sm font-medium text-blue-900">Storage: {harvestRecord.storage_location}</p>
+                      {harvestRecord.starch_index && (
+                        <p className="text-xs text-blue-700">Starch Index: {harvestRecord.starch_index}</p>
                       )}
                     </div>
-                    {harvest.shelfLifeDays && (
+                    {harvestRecord.shelf_life_days && (
                       <div className="flex items-center space-x-1">
                         <Thermometer size={14} className="text-blue-600" />
-                        <span className="text-sm text-blue-800">{harvest.shelfLifeDays} days</span>
+                        <span className="text-sm text-blue-800">{harvestRecord.shelf_life_days} days</span>
                       </div>
                     )}
                   </div>
@@ -205,12 +227,12 @@ export function HarvestManagement() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {Array.from(new Set(mockHarvest.map(h => h.variety))).map(variety => {
-                const varietyHarvests = mockHarvest.filter(h => h.variety === variety);
-                const totalBins = varietyHarvests.reduce((sum, h) => sum + h.binCount, 0);
-                const totalRevenue = varietyHarvests.reduce((sum, h) => sum + h.totalRevenue, 0);
+              {Array.from(new Set(harvest.map(h => h.variety))).map(variety => {
+                const varietyHarvests = harvest.filter(h => h.variety === variety);
+                const totalBins = varietyHarvests.reduce((sum, h) => sum + (h.bin_count || 0), 0);
+                const totalRevenue = varietyHarvests.reduce((sum, h) => sum + (h.total_revenue || 0), 0);
                 const avgPrice = totalBins > 0 ? totalRevenue / totalBins : 0;
-                const premiumCount = varietyHarvests.filter(h => h.qualityGrade === 'premium').length;
+                const premiumCount = varietyHarvests.filter(h => h.quality_grade === 'premium').length;
                 const premiumPercent = varietyHarvests.length > 0 ? (premiumCount / varietyHarvests.length) * 100 : 0;
                 const varietyInfo = getVarietyInfo(variety);
                 
@@ -264,9 +286,9 @@ export function HarvestManagement() {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Tree Block</label>
                     <select className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-green-500 focus:border-green-500">
-                      {mockTrees.map(tree => (
+                      {trees.map(tree => (
                         <option key={tree.id} value={tree.id}>
-                          {tree.variety} - Row {tree.row}
+                          {tree.variety} - Row {tree.row_number}
                         </option>
                       ))}
                     </select>

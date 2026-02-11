@@ -1,21 +1,42 @@
 import React, { useState } from 'react';
-import { mockTrees, mockFields } from '../data/mockData';
+import { useTrees } from '../hooks/useTrees';
+import { useFields } from '../hooks/useFields';
 import { TreePine, Plus, MapPin, Calendar, TrendingUp, Scissors } from 'lucide-react';
 
 export function TreeManagement() {
+  const { trees, loading: treesLoading, error: treesError } = useTrees();
+  const { fields, loading: fieldsLoading } = useFields();
   const [selectedField, setSelectedField] = useState<string>('all');
   const [selectedVariety, setSelectedVariety] = useState<string>('all');
 
-  const filteredTrees = mockTrees.filter(tree => {
-    const matchesField = selectedField === 'all' || tree.fieldId === selectedField;
+  const loading = treesLoading || fieldsLoading;
+
+  const filteredTrees = trees.filter(tree => {
+    const matchesField = selectedField === 'all' || tree.field_id === selectedField;
     const matchesVariety = selectedVariety === 'all' || tree.variety === selectedVariety;
     return matchesField && matchesVariety;
   });
 
-  const varieties = Array.from(new Set(mockTrees.map(tree => tree.variety)));
-  const totalTrees = filteredTrees.reduce((sum, tree) => sum + tree.treeCount, 0);
-  const totalYieldEstimate = filteredTrees.reduce((sum, tree) => sum + (tree.yieldEstimate || 0), 0);
+  const varieties = Array.from(new Set(trees.map(tree => tree.variety)));
+  const totalTrees = filteredTrees.reduce((sum, tree) => sum + (tree.tree_count || 0), 0);
+  const totalYieldEstimate = filteredTrees.reduce((sum, tree) => sum + (tree.yield_estimate || 0), 0);
   const healthyTrees = filteredTrees.filter(tree => tree.status === 'healthy').length;
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+      </div>
+    );
+  }
+
+  if (treesError) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+        <p className="text-red-800">Error loading trees: {treesError}</p>
+      </div>
+    );
+  }
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -103,12 +124,12 @@ export function TreeManagement() {
             >
               All Fields
             </button>
-            {mockFields.map(field => (
+            {fields.map(field => (
               <button
                 key={field.id}
-                onClick={() => setSelectedField(field.id)}
+                onClick={() => setSelectedField(field.id!)}
                 className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
-                  selectedField === field.id ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  selectedField === field.id! ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
                 {field.name}
@@ -135,14 +156,14 @@ export function TreeManagement() {
       {/* Tree Blocks Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
         {filteredTrees.map(tree => {
-          const field = mockFields.find(f => f.id === tree.fieldId);
+          const field = fields.find(f => f.id === tree.field_id);
           return (
             <div key={tree.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center space-x-2">
                   <TreePine size={20} className="text-green-600" />
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900">Row {tree.row}</h3>
+                    <h3 className="text-lg font-semibold text-gray-900">Row {tree.row_number}</h3>
                     <p className="text-sm text-gray-600">{field?.name}</p>
                   </div>
                 </div>
@@ -154,35 +175,35 @@ export function TreeManagement() {
               <div className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Tree Count:</span>
-                  <span className="font-medium">{tree.treeCount} trees</span>
+                  <span className="font-medium">{tree.tree_count} trees</span>
                 </div>
                 
                 <div className="flex justify-between">
                   <span className="text-gray-600">Status:</span>
-                  <span className={`px-2 py-1 text-xs rounded-full font-medium ${getStatusColor(tree.status)}`}>
-                    {tree.status}
+                  <span className={`px-2 py-1 text-xs rounded-full font-medium ${getStatusColor(tree.status || 'healthy')}`}>
+                    {tree.status || 'healthy'}
                   </span>
                 </div>
                 
                 <div className="flex justify-between">
                   <span className="text-gray-600">Planted:</span>
-                  <span className="font-medium">{tree.plantingYear}</span>
+                  <span className="font-medium">{tree.planting_year}</span>
                 </div>
 
-                {tree.yieldEstimate && (
+                {tree.yield_estimate && (
                   <div className="flex justify-between">
                     <span className="text-gray-600">Est. Yield:</span>
-                    <span className="font-medium text-green-600">{tree.yieldEstimate} bins</span>
+                    <span className="font-medium text-green-600">{tree.yield_estimate} bins</span>
                   </div>
                 )}
               </div>
 
-              {tree.lastPruned && (
+              {tree.last_pruned && (
                 <div className="mt-4 pt-4 border-t border-gray-200">
                   <div className="flex items-center space-x-2">
                     <Scissors size={14} className="text-gray-400" />
                     <span className="text-sm text-gray-600">
-                      Last pruned: {new Date(tree.lastPruned).toLocaleDateString()}
+                      Last pruned: {new Date(tree.last_pruned).toLocaleDateString()}
                     </span>
                   </div>
                 </div>
@@ -218,10 +239,10 @@ export function TreeManagement() {
             </thead>
             <tbody className="divide-y divide-gray-200">
               {varieties.map(variety => {
-                const varietyTrees = mockTrees.filter(tree => tree.variety === variety);
-                const totalTrees = varietyTrees.reduce((sum, tree) => sum + tree.treeCount, 0);
-                const totalYield = varietyTrees.reduce((sum, tree) => sum + (tree.yieldEstimate || 0), 0);
-                const avgAge = Math.round(varietyTrees.reduce((sum, tree) => sum + (2024 - tree.plantingYear), 0) / varietyTrees.length);
+                const varietyTrees = trees.filter(tree => tree.variety === variety);
+                const totalTrees = varietyTrees.reduce((sum, tree) => sum + (tree.tree_count || 0), 0);
+                const totalYield = varietyTrees.reduce((sum, tree) => sum + (tree.yield_estimate || 0), 0);
+                const avgAge = Math.round(varietyTrees.reduce((sum, tree) => sum + (2024 - tree.planting_year), 0) / varietyTrees.length);
                 const healthyCount = varietyTrees.filter(tree => tree.status === 'healthy').length;
                 
                 return (

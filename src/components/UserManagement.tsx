@@ -1,10 +1,21 @@
 import React, { useState } from 'react';
-import { mockUsers } from '../data/mockData';
+import { useAuth } from '../hooks/useAuth';
 import { Users, UserPlus, Mail, Shield, Clock, Key } from 'lucide-react';
 
 export function UserManagement() {
+  const { user } = useAuth();
   const [showInviteForm, setShowInviteForm] = useState(false);
   const [joinCode] = useState('FARM-2024-XYZ');
+
+  // For now, show only current user until team management is implemented
+  const mockUsers = user ? [{
+    id: user.id,
+    name: user.user_metadata?.name || user.email?.split('@')[0] || 'User',
+    email: user.email || '',
+    role: 'owner' as const,
+    joinDate: user.created_at || new Date().toISOString(),
+    status: 'active' as const
+  }] : [];
 
   const getRoleColor = (role: string) => {
     switch (role) {
@@ -111,7 +122,7 @@ export function UserManagement() {
                     <h4 className="text-lg font-medium text-gray-900">{user.name}</h4>
                     <div className="flex items-center space-x-2 mt-1">
                       <Mail size={14} className="text-gray-400" />
-                      <span className="text-sm text-gray-600">{user.email}</span>
+                      <span className="text-sm text-gray-600">{user.email || ''}</span>
                     </div>
                   </div>
                 </div>
@@ -138,7 +149,7 @@ export function UserManagement() {
                   <div className="text-right">
                     <p className="text-sm text-gray-500">Joined</p>
                     <p className="text-sm font-medium text-gray-900">
-                      {new Date(user.joinDate).toLocaleDateString()}
+                      {new Date(user.joinDate || '').toLocaleDateString()}
                     </p>
                   </div>
                 </div>

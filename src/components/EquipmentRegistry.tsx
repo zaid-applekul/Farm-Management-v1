@@ -1,9 +1,26 @@
 import React, { useState } from 'react';
-import { mockEquipment } from '../data/mockData';
+import { useEquipment } from '../hooks/useEquipment';
 import { Wrench, Calendar, AlertCircle, Plus, Settings } from 'lucide-react';
 
 export function EquipmentRegistry() {
+  const { equipment, loading, error } = useEquipment();
   const [selectedEquipment, setSelectedEquipment] = useState<string | null>(null);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+        <p className="text-red-800">Error loading equipment: {error}</p>
+      </div>
+    );
+  }
 
   const getConditionColor = (condition: string) => {
     switch (condition) {
@@ -19,17 +36,18 @@ export function EquipmentRegistry() {
     return ownership === 'owned' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800';
   };
 
-  const needsService = (nextService: string) => {
+  const needsService = (nextService: string | null) => {
+    if (!nextService) return false;
     const serviceDate = new Date(nextService);
     const now = new Date();
     const thirtyDaysFromNow = new Date(now.getTime() + (30 * 24 * 60 * 60 * 1000));
     return serviceDate <= thirtyDaysFromNow;
   };
 
-  const totalDailyCost = mockEquipment.reduce((sum, eq) => sum + eq.dailyCost, 0);
-  const ownedCount = mockEquipment.filter(eq => eq.ownership === 'owned').length;
-  const leasedCount = mockEquipment.filter(eq => eq.ownership === 'leased').length;
-  const servicesDue = mockEquipment.filter(eq => needsService(eq.nextService)).length;
+  const totalDailyCost = equipment.reduce((sum, eq) => sum + (eq.daily_cost || 0), 0);
+  const ownedCount = equipment.filter(eq => eq.ownership === 'owned').length;
+  const leasedCount = equipment.filter(eq => eq.ownership === 'leased').length;
+  const servicesDue = equipment.filter(eq => needsService(eq.next_service)).length;
 
   return (
     <div className="space-y-6">
@@ -47,7 +65,7 @@ export function EquipmentRegistry() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-blue-700 font-medium">Total Equipment</p>
-              <p className="text-2xl font-bold text-blue-800">{mockEquipment.length}</p>
+              <p className="text-2xl font-bold text-blue-800">{equipment.length}</p>
               <p className="text-xs text-blue-600 mt-1">{ownedCount} owned, {leasedCount} leased</p>
             </div>
             <Wrench className="text-blue-600" size={24} />
@@ -57,7 +75,7 @@ export function EquipmentRegistry() {
         <div className="bg-green-50 border-2 border-green-200 rounded-lg p-4">
           <div>
             <p className="text-green-700 font-medium">Daily Lease Cost</p>
-            <p className="text-2xl font-bold text-green-800">£{totalDailyCost}</p>
+            <p className="text-2xl font-bold text-green-800">₹{totalDailyCost}</p>
             <p className="text-xs text-green-600 mt-1">Active leases only</p>
           </div>
         </div>
@@ -66,7 +84,7 @@ export function EquipmentRegistry() {
           <div>
             <p className="text-purple-700 font-medium">Owned Assets</p>
             <p className="text-2xl font-bold text-purple-800">{ownedCount}</p>
-            <p className="text-xs text-purple-600 mt-1">{Math.round((ownedCount / mockEquipment.length) * 100)}% of fleet</p>
+            <p className="text-xs text-purple-600 mt-1">{equipment.length > 0 ? Math.round((ownedCount / equipment.length) * 100) : 0}% of fleet</p>
           </div>
         </div>
 
@@ -103,33 +121,33 @@ export function EquipmentRegistry() {
 
       {/* Equipment Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-        {mockEquipment.map(equipment => (
-          <div key={equipment.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        {equipment.map(equipmentItem => (
+          <div key={equipmentItem.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center space-x-2">
                 <Settings size={20} className="text-gray-400" />
-                <h3 className="text-lg font-semibold text-gray-900">{equipment.name}</h3>
+                <h3 className="text-lg font-semibold text-gray-900">{equipmentItem.name}</h3>
               </div>
-              <span className={`px-2 py-1 text-xs rounded-full font-medium ${getOwnershipColor(equipment.ownership)}`}>
-                {equipment.ownership}
+              <span className={`px-2 py-1 text-xs rounded-full font-medium ${getOwnershipColor(equipmentItem.ownership || 'owned')}`}>
+                {equipmentItem.ownership}
               </span>
             </div>
 
             <div className="space-y-3">
               <div className="flex justify-between">
                 <span className="text-gray-600">Type:</span>
-                <span className="font-medium">{equipment.type}</span>
+                <span className="font-medium">{equipmentItem.equipment_type}</span>
               </div>
               
               <div className="flex justify-between">
                 <span className="text-gray-600">Condition:</span>
-                <span className={`px-2 py-1 text-xs rounded-full font-medium ${getConditionColor(equipment.condition)}`}>
-                  {equipment.condition}
+                <span className={`px-2 py-1 text-xs rounded-full font-medium ${getConditionColor(equipmentItem.condition || 'good')}`}>
+                  {equipmentItem.condition}
                 </span>
               </div>
-              
-              {equipment.dailyCost > 0 && (
-                <div className="flex justify-between">
+                  {equipment.filter(eq => needsService(eq.next_service)).map(equipmentItem => (
+                    <p key={equipmentItem.id} className="text-sm text-amber-700">
+                      • {equipmentItem.name} - Service due {equipmentItem.next_service ? new Date(equipmentItem.next_service).toLocaleDateString() : 'Unknown'}
                   <span className="text-gray-600">Daily Cost:</span>
                   <span className="font-medium text-red-600">£{equipment.dailyCost}</span>
                 </div>
@@ -144,19 +162,19 @@ export function EquipmentRegistry() {
                 </span>
               </div>
               
-              <div className="flex items-center space-x-2">
+              {(equipmentItem.daily_cost || 0) > 0 && (
                 <Calendar size={14} className={needsService(equipment.nextService) ? 'text-amber-500' : 'text-gray-400'} />
                 <span className={`text-sm ${needsService(equipment.nextService) ? 'text-amber-700 font-medium' : 'text-gray-600'}`}>
-                  Next service: {new Date(equipment.nextService).toLocaleDateString()}
+                  <span className="font-medium text-red-600">₹{equipmentItem.daily_cost}</span>
                 </span>
-              </div>
+                  Last service: {equipmentItem.last_maintenance ? new Date(equipmentItem.last_maintenance).toLocaleDateString() : 'Never'}
             </div>
 
             <div className="mt-4 flex space-x-2">
               <button className="flex-1 bg-blue-600 text-white px-3 py-2 text-sm rounded-lg hover:bg-blue-700 transition-colors">
-                Update
-              </button>
-              <button className="flex-1 bg-gray-200 text-gray-800 px-3 py-2 text-sm rounded-lg hover:bg-gray-300 transition-colors">
+                <Calendar size={14} className={needsService(equipmentItem.next_service) ? 'text-amber-500' : 'text-gray-400'} />
+                <span className={`text-sm ${needsService(equipmentItem.next_service) ? 'text-amber-700 font-medium' : 'text-gray-600'}`}>
+                  Next service: {equipmentItem.next_service ? new Date(equipmentItem.next_service).toLocaleDateString() : 'Not scheduled'}
                 Maintenance
               </button>
             </div>
@@ -179,14 +197,14 @@ export function EquipmentRegistry() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {mockEquipment.map(equipment => (
-                <tr key={equipment.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-4 font-medium text-gray-900">{equipment.name}</td>
-                  <td className="px-4 py-4 text-gray-600">{equipment.type}</td>
-                  <td className="px-4 py-4 text-gray-600">{new Date(equipment.lastMaintenance).toLocaleDateString()}</td>
-                  <td className="px-4 py-4 text-gray-600">{new Date(equipment.nextService).toLocaleDateString()}</td>
+              {equipment.map(equipmentItem => (
+                <tr key={equipmentItem.id} className="hover:bg-gray-50">
+                  <td className="px-4 py-4 font-medium text-gray-900">{equipmentItem.name}</td>
+                  <td className="px-4 py-4 text-gray-600">{equipmentItem.equipment_type}</td>
+                  <td className="px-4 py-4 text-gray-600">{equipmentItem.last_maintenance ? new Date(equipmentItem.last_maintenance).toLocaleDateString() : 'Never'}</td>
+                  <td className="px-4 py-4 text-gray-600">{equipmentItem.next_service ? new Date(equipmentItem.next_service).toLocaleDateString() : 'Not scheduled'}</td>
                   <td className="px-4 py-4">
-                    {needsService(equipment.nextService) ? (
+                    {needsService(equipmentItem.next_service) ? (
                       <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-800">
                         Service Due
                       </span>

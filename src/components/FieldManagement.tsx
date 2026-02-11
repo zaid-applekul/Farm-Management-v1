@@ -1,6 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { mockFields } from '../data/mockData';
-import { Field } from '../types';
+import { useFields } from '../hooks/useFields';
 import {
   Sprout,
   MapPin,
@@ -13,9 +12,7 @@ import {
   ChevronUp
 } from 'lucide-react';
 
-const growthStages = ['all', 'seeding', 'vegetative', 'flowering', 'fruiting', 'harvesting'];
-
-const getWeedColor = (weedState: Field['weedState']) => {
+const getWeedColor = (weedState: string) => {
   switch (weedState) {
     case 'low':
       return 'bg-green-100 text-green-800';
@@ -28,7 +25,7 @@ const getWeedColor = (weedState: Field['weedState']) => {
   }
 };
 
-const getGrowthColor = (growthStage: Field['growthStage']) => {
+const getGrowthColor = (growthStage: string) => {
   switch (growthStage) {
     case 'seeding':
       return 'bg-yellow-100 text-yellow-800';
@@ -46,34 +43,53 @@ const getGrowthColor = (growthStage: Field['growthStage']) => {
 };
 
 export function FieldManagement() {
+  const { fields, loading, error } = useFields();
   const [selectedCrop, setSelectedCrop] = useState('all');
   const [selectedStage, setSelectedStage] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedFieldId, setExpandedFieldId] = useState<string | null>(null);
 
+  const growthStages = ['all', 'seeding', 'vegetative', 'flowering', 'fruiting', 'harvesting'];
+
   const crops = useMemo(() => {
-    const unique = Array.from(new Set(mockFields.map(field => field.crop)));
+    const unique = Array.from(new Set(fields.map(field => field.crop)));
     return ['all', ...unique];
-  }, []);
+  }, [fields]);
 
   const filteredFields = useMemo(() => {
-    return mockFields.filter(field => {
+    return fields.filter(field => {
       const matchesCrop = selectedCrop === 'all' || field.crop === selectedCrop;
-      const matchesStage = selectedStage === 'all' || field.growthStage === selectedStage;
+      const matchesStage = selectedStage === 'all' || field.growth_stage === selectedStage;
       const matchesSearch =
         field.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         field.crop.toLowerCase().includes(searchTerm.toLowerCase());
 
       return matchesCrop && matchesStage && matchesSearch;
     });
-  }, [selectedCrop, selectedStage, searchTerm]);
+  }, [fields, selectedCrop, selectedStage, searchTerm]);
 
-  const totalArea = mockFields.reduce((sum, field) => sum + field.area, 0);
-  const weedAlerts = mockFields.filter(field => field.weedState !== 'low').length;
-  const totalApplications = mockFields.reduce(
-    (sum, field) => sum + field.fertilizerApplied.length,
+  const totalArea = fields.reduce((sum, field) => sum + (field.area || 0), 0);
+  const weedAlerts = fields.filter(field => field.weed_state !== 'low').length;
+  const totalApplications = fields.reduce(
+    (sum, field) => sum + (field.fertilizer_applications?.length || 0),
     0
   );
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+        <p className="text-red-800">Error loading fields: {error}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -94,7 +110,7 @@ export function FieldManagement() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-green-700 font-medium">Total Fields</p>
-              <p className="text-2xl font-bold text-green-800">{mockFields.length}</p>
+              <p className="text-2xl font-bold text-green-800">{fields.length}</p>
             </div>
             <Sprout className="text-green-600" size={24} />
           </div>
@@ -219,28 +235,28 @@ export function FieldManagement() {
               <div className="mt-4 grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-xs uppercase text-gray-500">Growth Stage</p>
-                  <span className={`inline-flex mt-1 px-2 py-1 text-xs rounded-full ${getGrowthColor(field.growthStage)}`}>
-                    {field.growthStage}
+                  <span className={`inline-flex mt-1 px-2 py-1 text-xs rounded-full ${getGrowthColor(field.growth_stage || 'vegetative')}`}>
+                    {field.growth_stage}
                   </span>
                 </div>
                 <div>
                   <p className="text-xs uppercase text-gray-500">Weed Status</p>
-                  <span className={`inline-flex mt-1 px-2 py-1 text-xs rounded-full ${getWeedColor(field.weedState)}`}>
-                    {field.weedState}
+                  <span className={`inline-flex mt-1 px-2 py-1 text-xs rounded-full ${getWeedColor(field.weed_state || 'low')}`}>
+                    {field.weed_state}
                   </span>
                 </div>
                 <div>
                   <p className="text-xs uppercase text-gray-500">Planting Date</p>
                   <div className="flex items-center space-x-2 mt-1">
                     <Calendar size={14} className="text-gray-400" />
-                    <span className="text-sm text-gray-700">{new Date(field.plantingDate).toLocaleDateString()}</span>
+                    <span className="text-sm text-gray-700">{new Date(field.planting_date).toLocaleDateString()}</span>
                   </div>
                 </div>
                 <div>
                   <p className="text-xs uppercase text-gray-500">Last Updated</p>
                   <div className="flex items-center space-x-2 mt-1">
                     <Calendar size={14} className="text-gray-400" />
-                    <span className="text-sm text-gray-700">{new Date(field.lastUpdated).toLocaleDateString()}</span>
+                    <span className="text-sm text-gray-700">{field.last_updated ? new Date(field.last_updated).toLocaleDateString() : 'Never'}</span>
                   </div>
                 </div>
               </div>
@@ -249,22 +265,22 @@ export function FieldManagement() {
                 <div className="mt-4 border-t border-gray-200 pt-4">
                   <div className="flex items-center justify-between">
                     <h4 className="text-sm font-semibold text-gray-900">Fertilizer History</h4>
-                    <span className="text-xs text-gray-500">{field.fertilizerApplied.length} records</span>
+                    <span className="text-xs text-gray-500">{field.fertilizer_applications?.length || 0} records</span>
                   </div>
 
                   <div className="mt-3 space-y-2">
-                    {field.fertilizerApplied.length === 0 && (
+                    {(!field.fertilizer_applications || field.fertilizer_applications.length === 0) && (
                       <p className="text-sm text-gray-500">No fertilizer applications recorded.</p>
                     )}
-                    {field.fertilizerApplied.map(application => (
+                    {field.fertilizer_applications?.map(application => (
                       <div key={application.id} className="flex items-center justify-between text-sm border border-gray-100 rounded-lg p-3">
                         <div>
                           <p className="font-medium text-gray-900">{application.type}</p>
-                          <p className="text-xs text-gray-500">{new Date(application.date).toLocaleDateString()}</p>
+                          <p className="text-xs text-gray-500">{new Date(application.application_date).toLocaleDateString()}</p>
                         </div>
                         <div className="text-right">
                           <p className="font-medium text-gray-900">{application.amount} kg</p>
-                          <p className="text-xs text-gray-500">GBP {application.cost.toLocaleString()}</p>
+                          <p className="text-xs text-gray-500">₹{application.cost?.toLocaleString()}</p>
                         </div>
                       </div>
                     ))}
